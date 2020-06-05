@@ -1,0 +1,20 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+	<h1>My example data</h1>
+	<br>
+
+	<div class="card-group">
+		{% for item in items %}
+		<div class="card">
+		  <img style="width: 200px;">
+		  <div class="card-body">
+		    <h5 class="card-title">Fruit</h5>
+		    <p class="card-text">{{ item.name }}</p>
+		  </div>
+		</div>
+		{% endfor %}
+	</div>
+
+	<br>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'layout.html' %} {% block body %}
+<h1>Average value of a deal per year</h1>
+
+{% for deal in deals %}
+<p>{{ deal }}</p>
+{% endfor %}
+
+<br />
+{% endblock %}
