@@ -1,9 +1,16 @@
 {% extends 'layout.html' %} {% block body %}
 <h1>Average value of a deal per year</h1>
 
-{% for deal in deals %}
-<p>{{ deal }}</p>
-{% endfor %}
-
+<section class="avg_year_section">
+  {% for deal in deals %}
+  <div class="avg_per_year_div">
+    <p>
+      Year: {{ deal.year }} <br />
+      Average deal value: {{deal.avg_value}} <br />
+      Total number of deals: {{deal.total_deals}}
+    </p>
+  </div>
+  {% endfor %}
+</section>
 <br />
 {% endblock %}

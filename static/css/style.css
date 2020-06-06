@@ -1,0 +1,27 @@
+h1 {
+  color: black;
+}
+
+h3 {
+  margin-bottom: 5px;
+}
+
+button {
+  margin-bottom: 10px;
+}
+
+p {
+  border-bottom: 10px;
+}
+
+/* .Customer {
+  background-color: chartreuse;
+}
+
+.Inactive {
+  background-color: red;
+}
+
+.Prospect {
+  background-color: blue;
+} */

@@ -2,7 +2,14 @@
 <h1>Data for Deals</h1>
 
 {% for deal in deals %}
-<p>{{ deal }}</p>
+<p>{{deal}}</p>
+<div class="deal">
+  <ul class="deal-list">
+    Deal: {{deal.id}}
+    <li>Customer: {{deal.Customer}}</li>
+    <li>Value: {{deal.value}}</li>
+  </ul>
+</div>
 {% endfor %}
 
 <br />

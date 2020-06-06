@@ -1,0 +1,14 @@
+{% extends 'layout.html' %} {% block body %}
+<h1>Status of existing and potential customers</h1>
+
+{% for customer in customers %}
+<!-- <p>{{ customer }}</p> -->
+<div class="{{customer.Status}}">
+  <p>
+    <strong>Customer: </strong>{{customer.Customer}}
+    <br />
+    <em> Status: </em>{{customer.Status}} {% endfor %}
+  </p>
+</div>
+<br />
+{% endblock %}

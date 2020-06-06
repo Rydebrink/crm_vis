@@ -1,0 +1,21 @@
+{% extends 'layout.html' %} {% block body %}
+<h1>Total value per customer for {{display_year}}</h1>
+<h2>Pick year</h2>
+<br />
+<a href="/customer_value/2016"><button>2016</button></a>
+<a href="/customer_value/2017"><button>2017</button></a>
+<a href="/customer_value/2018"><button>2018</button></a>
+<a href="/customer_value/2019"><button>2019</button></a>
+<a href="/customer_value/2020"><button>2020</button></a>
+<h3>Customers ordered by total order value for {{display_year}}</h3>
+{% for customer in customers %}
+<!-- <p>{{ customer }}</p> -->
+<p>
+  <strong>Customer:</strong> {{customer.Customer}} <br />
+  <strong> Total order value: </strong> {{customer.Value}} <br />
+  <strong>Number or orders: </strong> {{customer.total_deals}}
+</p>
+{% endfor %}
+
+<br />
+{% endblock %}

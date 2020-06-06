@@ -1,8 +1,15 @@
 {% extends 'layout.html' %} {% block body %}
-<h1>Average deals per month for {{display_year}}</h1>
+<h1>Number of won deals per month for {{display_year}}</h1>
+<h2>Pick year</h2>
+<br />
+<a href="/average_month/2016"><button>2016</button></a>
+<a href="/average_month/2017"><button>2017</button></a>
+<a href="/average_month/2018"><button>2018</button></a>
+<a href="/average_month/2019"><button>2019</button></a>
+<a href="/average_month/2020"><button>2020</button></a>
 
 {% for deal in deals %}
-<p>{{ deal }}</p>
+<p>{{deal.name, deal.total_deals}}</p>
 {% endfor %}
 
 <br />
