@@ -19,6 +19,31 @@ STATUS_INACTIVE = 2
 STATUS_PROSPECT = 1
 STATUS_IRRELEVANT = 0
 
+background_color = ["rgba(222, 73, 73, 0.3)",
+                    "rgba(222, 155, 73, 0.3)",
+                    "rgba(222, 217, 73, 0.3)",
+                    "rgba(177, 222, 73, 0.3)",
+                    "rgba(123, 222, 73, 0.3)",
+                    "rgba(73, 222, 140, 0.3)",
+                    "rgba(73, 222, 220, 0.3)",
+                    "rgba(73, 167, 222, 0.3)",
+                    "rgba(73, 88, 222, 0.3)",
+                    "rgba(140, 73, 222, 0.3)",
+                    "rgba(222, 73, 222, 0.3)",
+                    "rgba(222, 73, 110, 0.3)"]
+
+border_color = ["rgba(222, 73, 73, 1)",
+                "rgba(222, 155, 73, 1)",
+                "rgba(222, 217, 73, 1)",
+                "rgba(177, 222, 73, 1)",
+                "rgba(123, 222, 73, 1)",
+                "rgba(73, 222, 140, 1)",
+                "rgba(73, 222, 220, 1)",
+                "rgba(73, 167, 222, 1)",
+                "rgba(73, 88, 222, 1)",
+                "rgba(140, 73, 222, 1)",
+                "rgba(222, 73, 222, 1)",
+                "rgba(222, 73, 110, 1)"]
 app = Flask(__name__, static_url_path='/static')
 
 # Headers for REST API call.
@@ -120,10 +145,57 @@ def get_average_per_year(data):
         for value in collected_data[year]:
             total += value
             count += 1
-        collected_data[year] = round((total / count), 2)
+        collected_data[year] = round((total / count))
         return_data.append(
-            {"year": year, "avg_value": collected_data[year], "total_deals": count})
+            {"label": year, "data": collected_data[year],  "year": year, "avg_value": collected_data[year], "total_deals": count})
     return return_data
+
+
+def get_graph_labels(data):
+    return_data = []
+    for entry in data:
+        return_data.append(entry.get("label"))
+    return return_data
+
+
+def get_graph_data(data):
+    return_data = []
+    for entry in data:
+        return_data.append(entry.get("data"))
+    return return_data
+
+
+def get_total_deals(data):
+    return_data = []
+    for entry in data:
+        return_data.append(entry.get("total_deals"))
+    return return_data
+
+
+def get_background_color(colors):
+    if colors <= 0:
+        return []
+    delta = 360/colors
+    hue = delta/2
+    background_color = []
+    for x in range(colors):
+        background_color.append("hsla("+str(int(hue))+", 69%, 58%, 0.3)")
+        hue += delta
+    return background_color
+
+
+def get_graph_colors(colors):
+    if colors <= 0:
+        return []
+    delta = 360/colors
+    hue = delta/2
+    background_color = []
+    border_color = []
+    for x in range(colors):
+        background_color.append("hsla("+str(int(hue))+", 69%, 58%, 0.3)")
+        border_color.append("hsla("+str(int(hue))+", 69%, 58%, 1)")
+        hue += delta
+    return [background_color, border_color]
 
 
 @app.route('/average_year')
@@ -137,7 +209,11 @@ def average_year():
     if len(response_deals) > 0:
         data = filter_deals(response_deals)
         average_per_year = get_average_per_year(data)
-        return render_template('average_year.html', deals=average_per_year)
+        graph_labels = get_graph_labels(average_per_year)
+        graph_data = get_graph_data(average_per_year)
+        graph_total_deals = get_total_deals(average_per_year)
+        graph_colors = get_graph_colors(len(graph_labels))
+        return render_template('average_year.html', deals=average_per_year, labels=graph_labels, data=graph_data, totalDeals=graph_total_deals, backgroundColor=graph_colors[0], borderColor=graph_colors[1])
     else:
         msg = 'No deals found'
         return render_template('average_year.html', msg=msg)
@@ -158,7 +234,7 @@ def get_average_per_month(data, year):
             count += 1
         collected_data[month] = count
         return_data.append(
-            {"month": month, "name": calendar.month_name[month], "total_deals": collected_data[month]})
+            {"label": calendar.month_name[month], "data": collected_data[month], "month": month, "name": calendar.month_name[month], "total_deals": collected_data[month]})
     return sorted(return_data, key=operator.itemgetter("month"))
 
 
@@ -175,7 +251,10 @@ def average_month(pick_year):
         data = filter_deals(response_deals)
         average_per_month = get_average_per_month(
             data, year)
-        return render_template('average_month.html', deals=average_per_month, display_year=year)
+        graph_labels = get_graph_labels(average_per_month)
+        graph_data = get_graph_data(average_per_month)
+        graph_colors = get_graph_colors(len(graph_labels))
+        return render_template('average_month.html', deals=average_per_month, display_year=year, labels=graph_labels, data=graph_data, backgroundColor=graph_colors[0], borderColor=graph_colors[1])
     else:
         msg = 'No deals found'
         return render_template('average_month.html', msg=msg)
@@ -200,7 +279,7 @@ def get_customer_value(data, year):
             count += 1
         collected_data[cust] = total
         return_data.append(
-            {"Customer": cust, "Value": collected_data[cust], "total_deals": count})
+            {"label": cust, "data": collected_data[cust], "Customer": cust, "Value": collected_data[cust], "total_deals": count})
 
     return sorted(return_data, key=operator.itemgetter("Value"), reverse=True)
 
@@ -218,7 +297,10 @@ def customer_value(pick_year):
         data = filter_deals(response_deals)
         customers = get_customer_value(
             data, year)
-        return render_template('customer_value.html', customers=customers, display_year=year)
+        graph_labels = get_graph_labels(customers)
+        graph_data = get_graph_data(customers)
+        graph_colors = get_graph_colors(len(graph_labels))
+        return render_template('customer_value.html', customers=customers, display_year=year, labels=graph_labels, data=graph_data, backgroundColor=graph_colors[0], borderColor=graph_colors[1])
     else:
         msg = 'No deals found'
         return render_template('average_month.html', msg=msg)

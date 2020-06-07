@@ -7,10 +7,56 @@
 <a href="/average_month/2018"><button>2018</button></a>
 <a href="/average_month/2019"><button>2019</button></a>
 <a href="/average_month/2020"><button>2020</button></a>
-
+<br />
+<!-- <h3>Raw data example</h3>
+{{deals[0]}} <br />
+<h3>Formatted data</h3>
 {% for deal in deals %}
 <p>{{deal.name, deal.total_deals}}</p>
 {% endfor %}
 
-<br />
+<br /> -->
+
+<canvas id="myChart" width="400" height="200"></canvas>
+<script>
+  var ctx = document.getElementById("myChart");
+  var myChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: {{labels|safe}},
+      datasets: [
+        {
+          label: "Deals closed per month",
+          minBarLength: 5,
+          data: {{data}},
+          backgroundColor: {{backgroundColor|safe}},
+          borderColor: {{borderColor|safe}},
+          borderWidth: 1.5,
+        },
+      ],
+    },
+    options: {
+      scales: {
+        yAxes: [
+          {
+            offset: true,
+            ticks: {
+              beginAtZero: true,
+            },
+          },
+        ],
+        xAxes: [
+          {
+            offset: true
+          }
+        ],
+      },
+      legend: { display: false },
+      title: {
+        display: true,
+        text: 'Deals closed per month for ' + {{display_year}}
+      },
+    },
+  });
+</script>
 {% endblock %}
