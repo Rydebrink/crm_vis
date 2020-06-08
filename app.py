@@ -19,31 +19,6 @@ STATUS_INACTIVE = 2
 STATUS_PROSPECT = 1
 STATUS_IRRELEVANT = 0
 
-background_color = ["rgba(222, 73, 73, 0.3)",
-                    "rgba(222, 155, 73, 0.3)",
-                    "rgba(222, 217, 73, 0.3)",
-                    "rgba(177, 222, 73, 0.3)",
-                    "rgba(123, 222, 73, 0.3)",
-                    "rgba(73, 222, 140, 0.3)",
-                    "rgba(73, 222, 220, 0.3)",
-                    "rgba(73, 167, 222, 0.3)",
-                    "rgba(73, 88, 222, 0.3)",
-                    "rgba(140, 73, 222, 0.3)",
-                    "rgba(222, 73, 222, 0.3)",
-                    "rgba(222, 73, 110, 0.3)"]
-
-border_color = ["rgba(222, 73, 73, 1)",
-                "rgba(222, 155, 73, 1)",
-                "rgba(222, 217, 73, 1)",
-                "rgba(177, 222, 73, 1)",
-                "rgba(123, 222, 73, 1)",
-                "rgba(73, 222, 140, 1)",
-                "rgba(73, 222, 220, 1)",
-                "rgba(73, 167, 222, 1)",
-                "rgba(73, 88, 222, 1)",
-                "rgba(140, 73, 222, 1)",
-                "rgba(222, 73, 222, 1)",
-                "rgba(222, 73, 110, 1)"]
 app = Flask(__name__, static_url_path='/static')
 
 # Headers for REST API call.
@@ -93,8 +68,8 @@ def filter_deals(data):
             "value": entry.get("value"),
             "status": entry.get("dealstatus").get("key"),
             "id": entry.get("_id"),
-            "Closing date": parse(entry.get("closeddate")),
-            "Description": entry.get("_descriptive")
+            "closing_date": parse(entry.get("closeddate")),
+            "description": entry.get("_descriptive")
         }
         if (entry.get("_embedded") is not None):
             deal["Customer"] = entry.get("_embedded").get(
@@ -134,7 +109,7 @@ def get_average_per_year(data):
     collected_data = collections.defaultdict(list)
     return_data = []
     for deal in data:
-        year = deal.get("Closing date").year
+        year = deal.get("closing_date").year
         status = deal.get("status")
         if status == "agreement":
             value = deal.get("value")
@@ -223,10 +198,10 @@ def get_average_per_month(data, year):
     collected_data = collections.defaultdict(list)
     return_data = []
     for deal in data:
-        deal_year = deal.get("Closing date").year
+        deal_year = deal.get("closing_date").year
         status = deal.get("status")
         if deal_year == year and status == "agreement":
-            month = deal.get("Closing date").month
+            month = deal.get("closing_date").month
             collected_data[month].append(1)
     for month in collected_data:
         count = 0
@@ -266,7 +241,7 @@ def get_customer_value(data, year):
     for deal in data:
         customer = deal.get("Customer")
         if customer is not None:
-            deal_year = deal.get("Closing date").year
+            deal_year = deal.get("closing_date").year
             status = deal.get("status")
             if deal_year == year and status == "agreement":
                 value = deal.get("value")
@@ -306,16 +281,16 @@ def customer_value(pick_year):
         return render_template('average_month.html', msg=msg)
 
 
-def filter_customers(data):
-    customers = []
-    for entry in data:
-        customer = {
-            "id": entry.get("_id"),
-            "name": entry.get("name"),
-        }
-        customers.append(customer)
-    print(customers)
-    return customers
+def filter_customer_data(data):
+    return {
+        "name": data.get("name") if data.get("name") else "N/A",
+        "phone": data.get("phone") if data.get("phone") else "N/A",
+        "www": data.get("www") if data.get("www") else "N/A",
+        "postaladdress1": data.get("postaladdress1") if data.get("postaladdress1") else "N/A",
+        "postalzipcode": data.get("postalzipcode") if data.get("postalzipcode") else "N/A",
+        "postalcity": data.get("postalcity") if data.get("postalcity") else "N/A",
+        "country": data.get("country") if data.get("country") else "N/A",
+    }
 
 
 def subtract_years(dt, years):
@@ -343,33 +318,40 @@ def set_customer_status(data):
 
 def get_customer_status(deals):
     collected_data = collections.defaultdict(list)
+    customer_deals = collections.defaultdict(
+        lambda: collections.defaultdict(list))
     return_data = []
     last_year = subtract_years(datetime.datetime.now(datetime.timezone.utc), 1)
     for data in deals:
-        if data.get("Customer-id") is not None:
-            customer = data.get("Customer")
-            customer_id = data.get("Customer-id")
-            deal_id = data.get("id")
+        cust_id = data.get("Customer-id")
+        if cust_id is not None:
+            cust_name = data.get("Customer")
             deal_status = data.get("status")
-            deal_date = data.get("Closing date")
+            deal_date = data.get("closing_date")
+            deal_value = data.get("value")
+            customer_deals[cust_id]["value"].append(deal_value)
+            customer_deals[cust_id]["date"].append(deal_date)
+            customer_deals[cust_id]["customer_name"].append(cust_name)
             customer_status = data.get("company_status")
             if deal_status == "agreement":
                 if deal_date > last_year:
-                    deal_value = STATUS_CUSTOMER
+                    deal_status_value = STATUS_CUSTOMER
                 else:
-                    deal_value = STATUS_INACTIVE
+                    deal_status_value = STATUS_INACTIVE
             elif customer_status == "irrelevant":
-                deal_value = STATUS_IRRELEVANT
+                deal_status_value = STATUS_IRRELEVANT
             else:
-                deal_value = STATUS_PROSPECT
-            print(customer, customer_id, deal_id,
-                  deal_status, deal_date, deal_value)
-            collected_data[customer].append(deal_value)
-    for comp in collected_data:
-        print("Customer", comp, "Deals", collected_data[comp], "Status", set_customer_status(
-            collected_data[comp]))
+                deal_status_value = STATUS_PROSPECT
+            collected_data[cust_id].append(deal_status_value)
+
+    for company in collected_data:
+        total_value = sum(customer_deals[company]["value"])
+        latest_deal = sorted(customer_deals[company]["date"], reverse=True)[0]
+        status = set_customer_status(collected_data[company])
+        name = customer_deals[company]["customer_name"][0]
         return_data.append(
-            {"Customer": comp, "Status": set_customer_status(collected_data[comp])})
+            {"id": company, "customer_name": name, "customer_status": status, "total_value": total_value, "latest_deal": latest_deal.strftime("%Y/%m/%d")})
+
     return return_data
 
 
@@ -379,22 +361,47 @@ def customer_status():
     deal_params = "?_limit=50&_embed=company"
     deal_url = deal_api + deal_params
 
-    # company_api = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/company/"
-    # company_params = "?_limit=50"
-    # company_url = company_api + company_params
-
     response_deals = get_api_data(headers=headers, url=deal_url)
-    # response_company = get_api_data(headers=headers, url=company_url)
 
     if len(response_deals) > 0:
         deals = filter_deals(response_deals)
-        # customer_info = filter_customers(response_company)
         customers_status = get_customer_status(
             deals)
         return render_template('customer_status.html', customers=customers_status)
     else:
         msg = 'No deals found'
         return render_template('customer_status.html', msg=msg)
+
+
+def format_deals(deals):
+    return_data = []
+    return ""
+
+
+@ app.route('/customer/<id>')
+def customer_info(id):
+    base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/company/"
+    params = id+"/"
+    url = base_url + params
+    response = api_request.get(
+        url=url, headers=headers, data=None, verify=False)
+
+    response_customer = json.loads(response.text)
+    print(response_customer)
+
+    url += "deal/"
+    response_deals = get_api_data(headers=headers, url=url)
+    print(response_deals)
+
+    if len(response_customer) > 0:
+        customer_info = filter_customer_data(response_customer)
+        deal_info = filter_deals(response_deals)
+        deals_formatted = format_deals(deal_info)
+        print("DEAL INFO: ", deal_info)
+        return render_template('customer_info.html', customer=customer_info, deals=deal_info, total_value=10, total_orders=len(deal_info))
+    else:
+        msg = 'No deals found'
+        return render_template('customer_info.html', msg=msg)
 
 # You can add more pages to your app, like this:
 #

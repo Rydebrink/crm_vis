@@ -14,14 +14,39 @@ p {
   border-bottom: 10px;
 }
 
-/* .Customer {
-  background-color: chartreuse;
+a,
+a:hover {
+  color: inherit;
+  text-decoration: none;
 }
 
-.Inactive {
-  background-color: red;
+.customer-section {
+  display: grid;
+  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-rows: 1fr;
+}
+
+.customer-card {
+  display: flex;
+}
+
+.customer-card p {
+  margin: 5px;
+}
+
+.Customer {
+  background-color: rgba(12, 186, 0, 0.3);
 }
 
 .Prospect {
-  background-color: blue;
-} */
+  background-color: rgba(0, 124, 186, 0.3);
+}
+
+.Inactive {
+  background-color: rgba(45, 54, 59, 0.3);
+}
+
+.Irrelevant {
+  background-color: rgba(176, 0, 0, 0.3);
+}
