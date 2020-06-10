@@ -1,4 +1,3 @@
-# To solve your task you might (or might not) need to import additional libraries
 from flask import Flask, render_template, flash, redirect, url_for, request, logging
 import requests as api_request
 import json
@@ -7,6 +6,9 @@ import collections
 import operator
 import datetime
 import calendar
+import Customer
+import Deal
+import Chart
 from dateutil.parser import parse
 import os
 from dotenv import load_dotenv
@@ -19,18 +21,18 @@ STATUS_INACTIVE = 2
 STATUS_PROSPECT = 1
 STATUS_IRRELEVANT = 0
 
+
 app = Flask(__name__, static_url_path='/static')
 
-# Headers for REST API call.
-# Paste the API-key you have been provided as the value for "x-api-key"
 headers = {
     "Content-Type": "application/json",
     "Accept": "application/hal+json",
     "x-api-key": API_KEY
 }
 
-
 # Example of function for REST API call to get data from Lime
+
+
 def get_api_data(headers, url):
     # First call to get first data page from the API
     response = api_request.get(
@@ -55,31 +57,65 @@ def get_api_data(headers, url):
     return limeobjects
 
 
+def get_deal_data(headers):
+    base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/deal/"
+    params = "?_limit=50&_embed=company"
+    url = base_url + params
+
+    return get_api_data(headers, url)
+
+
+def get_customer_data(headers):
+    base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/company/"
+    params = "?_limit=50"
+    url = base_url + params
+
+    return get_api_data(headers, url)
+
+
+def get_deals_for_customer(header, id):
+    base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/company/"
+    params = id+"/deal/"
+    url = base_url + params
+    response = api_request.get(
+        url=url, headers=headers, data=None, verify=False)
+
+    return [json.loads(response.text)]
+
 # Index page
+
+
 @ app.route('/')
 def index():
     return render_template('home.html')
 
 
+def filter_deal(entry):
+    return Deal(entry.get("_id"), entry.get("dealstatus").get("key"), entry.get("value"), entry.get("_descriptive"), parse(entry.get("closeddate")))
+
+
 def filter_deals(data):
     deals = []
     for entry in data:
+        print(entry)
         try:
-            deal = {
-                "closing_date": parse(entry.get("closeddate")),
-                "value": entry.get("value"),
-                "status": entry.get("dealstatus").get("key"),
-                "id": entry.get("_id"),
-                "description": entry.get("_descriptive")
-            }
-            if (entry.get("_embedded") is not None):
-                deal["Customer"] = entry.get("_embedded").get(
-                    "relation_company").get("name")
-                deal["Customer-id"] = entry.get("_embedded").get(
-                    "relation_company").get("_id")
-                deal["company_status"] = entry.get("_embedded").get(
-                    "relation_company").get("buyingstatus").get("key")
-            deals.append(deal)
+            parse(entry.get("closeddate"))
+            deals.append(filter_deal(entry))
+            # deal = {
+            #     "closing_date": parse(entry.get("closeddate")),
+            #     "value": entry.get("value"),
+            #     "status": entry.get("dealstatus").get("key"),
+            #     "id": entry.get("_id"),
+            #     "description": entry.get("_descriptive")
+            # }
+            # if (entry.get("_embedded") is not None):
+            #     deal["Customer"] = entry.get("_embedded").get(
+            #         "relation_company").get("name")
+            #     deal["Customer-id"] = entry.get("_embedded").get(
+            #         "relation_company").get("_id")
+            #     deal["company_status"] = entry.get("_embedded").get(
+            #         "relation_company").get("buyingstatus").get("key")
+            # deals.append(deal)
         except TypeError:
             print("No date available")
         except:
@@ -98,6 +134,8 @@ def example():
     url = base_url + params
     response_deals = get_api_data(headers=headers, url=url)
 
+    print(filter_deals(response_deals))
+
     # YOUR CODE HERE
     # In this exmaple, this is where you can do something with the data
     # in 'response_deals' before you return it.
@@ -114,7 +152,6 @@ def get_average_per_year(data):
     collected_data = collections.defaultdict(list)
     return_data = []
     for deal in data:
-        print("WOHOOOO", deal.get("closing_date"))
         year = deal.get("closing_date").year
         status = deal.get("status")
         if status == "agreement":
@@ -179,7 +216,7 @@ def get_graph_colors(colors):
     return [background_color, border_color]
 
 
-@app.route('/average_year')
+@ app.route('/average_year')
 def average_year():
 
     base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/deal/"
@@ -219,7 +256,7 @@ def get_average_per_month(data, year):
     return sorted(return_data, key=operator.itemgetter("month"))
 
 
-@app.route('/average_month/<pick_year>')
+@ app.route('/average_month/<pick_year>')
 def average_month(pick_year):
     year = datetime.datetime(int(pick_year), 1, 1).year
 
@@ -265,7 +302,7 @@ def get_customer_value(data, year):
     return sorted(return_data, key=operator.itemgetter("Value"), reverse=True)
 
 
-@app.route('/customer_value/<pick_year>')
+@ app.route('/customer_value/<pick_year>')
 def customer_value(pick_year):
     year = datetime.datetime(int(pick_year), 1, 1).year
 
@@ -393,17 +430,14 @@ def customer_info(id):
         url=url, headers=headers, data=None, verify=False)
 
     response_customer = json.loads(response.text)
-    print(response_customer)
 
     url += "deal/"
     response_deals = get_api_data(headers=headers, url=url)
-    print(response_deals)
 
     if len(response_customer) > 0:
         customer_info = filter_customer_data(response_customer)
         deal_info = filter_deals(response_deals)
         deals_formatted = format_deals(deal_info)
-        print("DEAL INFO: ", deal_info)
         return render_template('customer_info.html', customer=customer_info, deals=deal_info, total_value=10, total_orders=len(deal_info))
     else:
         msg = 'No deals found'
