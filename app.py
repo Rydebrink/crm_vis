@@ -64,21 +64,26 @@ def index():
 def filter_deals(data):
     deals = []
     for entry in data:
-        deal = {
-            "value": entry.get("value"),
-            "status": entry.get("dealstatus").get("key"),
-            "id": entry.get("_id"),
-            "closing_date": parse(entry.get("closeddate")),
-            "description": entry.get("_descriptive")
-        }
-        if (entry.get("_embedded") is not None):
-            deal["Customer"] = entry.get("_embedded").get(
-                "relation_company").get("name")
-            deal["Customer-id"] = entry.get("_embedded").get(
-                "relation_company").get("_id")
-            deal["company_status"] = entry.get("_embedded").get(
-                "relation_company").get("buyingstatus").get("key")
-        deals.append(deal)
+        try:
+            deal = {
+                "closing_date": parse(entry.get("closeddate")),
+                "value": entry.get("value"),
+                "status": entry.get("dealstatus").get("key"),
+                "id": entry.get("_id"),
+                "description": entry.get("_descriptive")
+            }
+            if (entry.get("_embedded") is not None):
+                deal["Customer"] = entry.get("_embedded").get(
+                    "relation_company").get("name")
+                deal["Customer-id"] = entry.get("_embedded").get(
+                    "relation_company").get("_id")
+                deal["company_status"] = entry.get("_embedded").get(
+                    "relation_company").get("buyingstatus").get("key")
+            deals.append(deal)
+        except TypeError:
+            print("No date available")
+        except:
+            print("Something went wrong")
     return deals
 
 # Example page
@@ -109,6 +114,7 @@ def get_average_per_year(data):
     collected_data = collections.defaultdict(list)
     return_data = []
     for deal in data:
+        print("WOHOOOO", deal.get("closing_date"))
         year = deal.get("closing_date").year
         status = deal.get("status")
         if status == "agreement":
