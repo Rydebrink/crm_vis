@@ -267,7 +267,7 @@ def example():
         return render_template('example.html', deals=deals)
     else:
         msg = 'No deals found'
-        return render_template('example.html', msg=msg)
+        return render_template('example.html', error=msg)
 
 
 @ app.route('/average_year')
@@ -373,7 +373,7 @@ def set_customer_status(data):
         return "Unknown status"
 
 
-def get_customer_status(deals):
+def get_customer_status(customers):
     collected_data = collections.defaultdict(list)
     customer_deals = collections.defaultdict(
         lambda: collections.defaultdict(list))
@@ -414,16 +414,16 @@ def get_customer_status(deals):
 
 @ app.route('/customer_status')
 def customer_status():
-    deal_api = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/deal/"
-    deal_params = "?_limit=50&_embed=company"
-    deal_url = deal_api + deal_params
+    year = str(subtract_years(
+        datetime.datetime.now(datetime.timezone.utc), 1).year)
 
-    response_deals = get_api_data(headers=headers, url=deal_url)
+    customer_data = get_customer_data(headers)
+    deal_data = get_deal_data(headers)
+    deals = filter_deals(deal_data)
 
-    if len(response_deals) > 0:
-        deals = filter_deals(response_deals)
+    if len(customer_data) > 0:
         customers_status = get_customer_status(
-            deals)
+            customer_data, deals)
         return render_template('customer_status.html', customers=customers_status)
     else:
         msg = 'No deals found'
