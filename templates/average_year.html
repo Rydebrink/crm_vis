@@ -1,35 +1,19 @@
-{% extends 'layout.html' %} {% block body %}
+{% extends 'layout.html' %} {% block body %} {% for chart in charts %}
 <h1>Average value of a deal per year</h1>
-
-<!-- <section class="avg_year_section">
-  <h3>Raw data example</h3>
-  {{deals[3]}} <br />
-  <h3>Formatted data</h3>
-  {% for deal in deals %}
-  <div class="avg_per_year_div">
-    <p>
-      Year: {{ deal.year }} <br />
-      Average deal value: {{deal.avg_value}} <br />
-      Total number of deals: {{deal.total_deals}}
-    </p>
-  </div>
-  {% endfor %}
-</section>
-<br /> -->
 <canvas id="myAvgDealValueChart" width="400" height="200"></canvas>
 <script>
   var ctx = document.getElementById("myAvgDealValueChart");
   var myAvgDealValueChart = new Chart(ctx, {
-    type: "bar",
+    type: '{{avg_chart.chart_type}}',
     data: {
-      labels: {{labels}},
+      labels: {{avg_chart.labels}},
       datasets: [
         {
           label: "Average deal value",
           minBarLength: 5,
-          data: {{data}},
-          backgroundColor: {{backgroundColor|safe}},
-          borderColor: {{borderColor|safe}},
+          data: {{avg_chart.data}},
+          backgroundColor: {{avg_chart.background_color|safe}},
+          borderColor: {{avg_chart.border_color|safe}},
           borderWidth: 1.5,
         },
       ],
@@ -47,7 +31,7 @@
       legend: { display: false },
       title: {
         display: true,
-        text: 'Average deal value per year'
+        text: 'Average deal value per year in SEK'
       },
     },
   });
@@ -56,16 +40,16 @@
 <script>
   var ctx = document.getElementById("myTotalDealsChart");
   var myTotalDealsChart = new Chart(ctx, {
-    type: "bar",
+    type: '{{total_chart.chart_type}}',
     data: {
-      labels: {{labels}},
+      labels: {{total_chart.labels}},
       datasets: [
         {
           label: "Total deals",
           minBarLength: 5,
-          data: {{totalDeals}},
-          backgroundColor: {{backgroundColor|safe}},
-          borderColor: {{borderColor|safe}},
+          data: {{total_chart.data}},
+          backgroundColor: {{total_chart.background_color|safe}},
+          borderColor: {{total_chart.border_color|safe}},
           borderWidth: 1.5,
         },
       ],
@@ -88,4 +72,4 @@
     },
   });
 </script>
-{% endblock %}
+{% endfor %} {% endblock %}

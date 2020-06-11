@@ -2,11 +2,9 @@
 <h1>Number of won deals per month for {{display_year}}</h1>
 <h2>Pick year</h2>
 <br />
-<a href="/average_month/2016"><button>2016</button></a>
-<a href="/average_month/2017"><button>2017</button></a>
-<a href="/average_month/2018"><button>2018</button></a>
-<a href="/average_month/2019"><button>2019</button></a>
-<a href="/average_month/2020"><button>2020</button></a>
+{% for year in years %}
+<a href="/average_month/{{year}}"><button>{{year}}</button></a>
+{% endfor %}
 <br />
 <!-- <h3>Raw data example</h3>
 {{deals[0]}} <br />
@@ -21,16 +19,16 @@
 <script>
   var ctx = document.getElementById("myChart");
   var myChart = new Chart(ctx, {
-    type: "bar",
+    type: "{{chart.chart_type}}",
     data: {
-      labels: {{labels|safe}},
+      labels: {{chart.labels|safe}},
       datasets: [
         {
           label: "Deals closed per month",
           minBarLength: 5,
-          data: {{data}},
-          backgroundColor: {{backgroundColor|safe}},
-          borderColor: {{borderColor|safe}},
+          data: {{chart.data}},
+          backgroundColor: {{chart.background_color|safe}},
+          borderColor: {{chart.border_color|safe}},
           borderWidth: 1.5,
         },
       ],

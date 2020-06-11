@@ -6,9 +6,9 @@ import collections
 import operator
 import datetime
 import calendar
-import Customer
-import Deal
-import Chart
+from classes.customer import Customer
+from classes.deal import Deal
+from classes.chart import Chart
 from dateutil.parser import parse
 import os
 from dotenv import load_dotenv
@@ -29,8 +29,6 @@ headers = {
     "Accept": "application/hal+json",
     "x-api-key": API_KEY
 }
-
-# Example of function for REST API call to get data from Lime
 
 
 def get_api_data(headers, url):
@@ -75,131 +73,95 @@ def get_customer_data(headers):
 
 def get_deals_for_customer(header, id):
     base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/company/"
-    params = id+"/deal/"
+    params = str(id)+"/deal/"
     url = base_url + params
-    response = api_request.get(
-        url=url, headers=headers, data=None, verify=False)
-
-    return [json.loads(response.text)]
-
-# Index page
+    return get_api_data(headers, url)
 
 
-@ app.route('/')
-def index():
-    return render_template('home.html')
-
-
-def filter_deal(entry):
-    return Deal(entry.get("_id"), entry.get("dealstatus").get("key"), entry.get("value"), entry.get("_descriptive"), parse(entry.get("closeddate")))
+def filter_deal(entry, close_date):
+    if entry.get("_embedded") is not None:
+        company = entry.get("_embedded").get("relation_company")
+        customer_id = company.get("_id")
+        name = company.get("name")
+        status = company.get("buyingstatus").get("key")
+        www = company.get("www")
+        phone = company.get("phone")
+        address = company.get("postaladdress1")
+        zip_code = company.get("postalzipcode")
+        city = company.get("postalcity")
+        deals = []
+        customer = Customer(customer_id, name, status, www,
+                            phone, address, zip_code, city, deals)
+    else:
+        customer = None
+    return Deal(entry.get("_id"),
+                entry.get("dealstatus").get("key"),
+                entry.get("value"),
+                entry.get("_descriptive"),
+                close_date,
+                customer)
 
 
 def filter_deals(data):
     deals = []
     for entry in data:
-        print(entry)
         try:
             parse(entry.get("closeddate"))
-            deals.append(filter_deal(entry))
-            # deal = {
-            #     "closing_date": parse(entry.get("closeddate")),
-            #     "value": entry.get("value"),
-            #     "status": entry.get("dealstatus").get("key"),
-            #     "id": entry.get("_id"),
-            #     "description": entry.get("_descriptive")
-            # }
-            # if (entry.get("_embedded") is not None):
-            #     deal["Customer"] = entry.get("_embedded").get(
-            #         "relation_company").get("name")
-            #     deal["Customer-id"] = entry.get("_embedded").get(
-            #         "relation_company").get("_id")
-            #     deal["company_status"] = entry.get("_embedded").get(
-            #         "relation_company").get("buyingstatus").get("key")
-            # deals.append(deal)
         except TypeError:
-            print("No date available")
-        except:
-            print("Something went wrong")
+            deals.append(filter_deal(entry, None))
+        else:
+            deals.append(filter_deal(entry, parse(entry.get("closeddate"))))
     return deals
 
-# Example page
+
+def filter_customers(data):
+    customers = []
+    for entry in data:
+        customer_id = entry.get("_id")
+        name = entry.get("name")
+        status = entry.get("buyingstatus").get("key")
+        www = entry.get("www")
+        phone = entry.get("phone")
+        address = entry.get("postaladdress1")
+        zip_code = entry.get("postalzipcode")
+        city = entry.get("postalcity")
+        deals = filter_deals(get_deals_for_customer(headers, customer_id))
+        customers.append(Customer(customer_id, name, status,
+                                  www, phone, address, zip_code, city, deals))
+    return customers
 
 
-@ app.route('/example')
-def example():
-
-    # Example of API call to get deals
-    base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/deal/"
-    params = "?_limit=50&_embed=company"
-    url = base_url + params
-    response_deals = get_api_data(headers=headers, url=url)
-
-    print(filter_deals(response_deals))
-
-    # YOUR CODE HERE
-    # In this exmaple, this is where you can do something with the data
-    # in 'response_deals' before you return it.
-
-    if len(response_deals) > 0:
-        dream_team_deals = filter_deals(response_deals)
-        return render_template('example.html', deals=dream_team_deals)
-    else:
-        msg = 'No deals found'
-        return render_template('example.html', msg=msg)
-
-
-def get_average_per_year(data):
-    collected_data = collections.defaultdict(list)
-    return_data = []
-    for deal in data:
-        year = deal.get("closing_date").year
-        status = deal.get("status")
-        if status == "agreement":
-            value = deal.get("value")
-            collected_data[year].append(value)
-    for year in collected_data:
-        count = 0
-        total = 0
-        for value in collected_data[year]:
-            total += value
-            count += 1
-        collected_data[year] = round((total / count))
-        return_data.append(
-            {"label": year, "data": collected_data[year],  "year": year, "avg_value": collected_data[year], "total_deals": count})
-    return return_data
-
-
-def get_graph_labels(data):
+def get_total_deals(data, data_key):
     return_data = []
     for entry in data:
-        return_data.append(entry.get("label"))
+        return_data.append(entry.get(data_key))
     return return_data
 
 
-def get_graph_data(data):
+def get_years(data):
+    years = set()
+    for entry in data:
+        try:
+            parse(entry.get("closeddate"))
+        except TypeError:
+            print("No date available")
+        else:
+            years.add(parse(entry.get("closeddate")).year)
+    return sorted(years)
+
+
+def get_graph_labels(data, label_key):
     return_data = []
     for entry in data:
-        return_data.append(entry.get("data"))
+        return_data.append(entry.get(label_key))
     return return_data
 
 
-def get_total_deals(data):
+def get_graph_data(data, data_key):
     return_data = []
     for entry in data:
-        return_data.append(entry.get("total_deals"))
+        return_data.append(entry.get(data_key))
     return return_data
-
-
-def get_background_color(colors):
-    if colors <= 0:
-        return []
-    delta = 360/colors
-    hue = delta/2
-    background_color = []
-    for x in range(colors):
-        background_color.append("hsla("+str(int(hue))+", 69%, 58%, 0.3)")
-        hue += delta
-    return background_color
 
 
 def get_graph_colors(colors):
@@ -216,35 +178,45 @@ def get_graph_colors(colors):
     return [background_color, border_color]
 
 
-@ app.route('/average_year')
-def average_year():
+def create_chart(data, chart_type, label_key, data_key):
+    chart_labels = get_graph_labels(data, label_key)
+    chart_data = get_graph_data(data, data_key)
+    graph_colors = get_graph_colors(len(chart_labels))
+    print(graph_colors)
+    return Chart(chart_type, chart_labels, chart_data, graph_colors[0], graph_colors[1])
 
-    base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/deal/"
-    params = "?_limit=50&_embed=company"
-    url = base_url + params
-    response_deals = get_api_data(headers=headers, url=url)
 
-    if len(response_deals) > 0:
-        data = filter_deals(response_deals)
-        average_per_year = get_average_per_year(data)
-        graph_labels = get_graph_labels(average_per_year)
-        graph_data = get_graph_data(average_per_year)
-        graph_total_deals = get_total_deals(average_per_year)
-        graph_colors = get_graph_colors(len(graph_labels))
-        return render_template('average_year.html', deals=average_per_year, labels=graph_labels, data=graph_data, totalDeals=graph_total_deals, backgroundColor=graph_colors[0], borderColor=graph_colors[1])
-    else:
-        msg = 'No deals found'
-        return render_template('average_year.html', msg=msg)
+def get_average_per_year(data):
+    collected_data = collections.defaultdict(list)
+    return_data = []
+    for deal in data:
+        year = deal.closing_date.year if deal.closing_date is not None else None
+        status = deal.status
+        if status == "agreement" and year is not None:
+            print("YEAR AGAIN ", year)
+            value = deal.value
+            collected_data[year].append(value)
+    for year in collected_data:
+        count = 0
+        total = 0
+        for value in collected_data[year]:
+            total += value
+            count += 1
+        collected_data[year] = round((total / count))
+        return_data.append(
+            {"year": year, "avg_value": collected_data[year], "total_deals": count})
+    print(return_data)
+    return return_data
 
 
 def get_average_per_month(data, year):
     collected_data = collections.defaultdict(list)
     return_data = []
     for deal in data:
-        deal_year = deal.get("closing_date").year
-        status = deal.get("status")
+        deal_year = deal.closing_date.year if deal.closing_date is not None else None
+        status = deal.status
         if deal_year == year and status == "agreement":
-            month = deal.get("closing_date").month
+            month = deal.closing_date.month
             collected_data[month].append(1)
     for month in collected_data:
         count = 0
@@ -252,76 +224,118 @@ def get_average_per_month(data, year):
             count += 1
         collected_data[month] = count
         return_data.append(
-            {"label": calendar.month_name[month], "data": collected_data[month], "month": month, "name": calendar.month_name[month], "total_deals": collected_data[month]})
+            {"month": month, "name": calendar.month_name[month], "total_deals": collected_data[month]})
     return sorted(return_data, key=operator.itemgetter("month"))
+
+
+def get_customer_value(deals, year):
+    deal_data = collections.defaultdict(list)
+    customer_data = collections.defaultdict(set)
+    return_data = []
+    for deal in deals:
+        customer = deal.customer
+        closing_date = deal.closing_date
+        if customer is not None and closing_date is not None:
+            if deal.closing_date.year == year and deal.status == "agreement":
+                deal_data[customer.customer_id].append(deal.value)
+                customer_data[customer.customer_id].add(deal.customer.name)
+    for cust in deal_data:
+        total = 0
+        count = 0
+        for value in deal_data[cust]:
+            total += value
+            count += 1
+        deal_data[cust] = total
+        name = customer_data.get(cust).pop()
+        return_data.append(
+            {"customer_id": cust, "customer_name": name, "value": deal_data[cust], "total_deals": count})
+
+    return sorted(return_data, key=operator.itemgetter("value"), reverse=True)
+
+
+@ app.route('/')
+def index():
+    return render_template('home.html')
+
+
+@ app.route('/example')
+def example():
+    data = get_deal_data(headers)
+    deals = filter_deals(data)
+    deals = []
+    if len(deals) > 0:
+        return render_template('example.html', deals=deals)
+    else:
+        msg = 'No deals found'
+        return render_template('example.html', msg=msg)
+
+
+@ app.route('/average_year')
+def average_year():
+
+    data = get_deal_data(headers)
+    deals = filter_deals(data)
+    if len(deals) > 0:
+        average_per_year = get_average_per_year(deals)
+        avg_per_year_chart = create_chart(
+            average_per_year, "bar", "year", "avg_value")
+        total_deals_per_year_chart = create_chart(
+            average_per_year, "bar", "year", "total_deals")
+        return render_template('average_year.html', deals=average_per_year, avg_chart=avg_per_year_chart, total_chart=total_deals_per_year_chart)
+    else:
+        msg = 'No deals found'
+        return render_template('average_year.html', msg=msg)
+
+
+@ app.route('/average_month')
+def average_month_default():
+    year = str(subtract_years(
+        datetime.datetime.now(datetime.timezone.utc), 1).year)
+    return average_month(year)
 
 
 @ app.route('/average_month/<pick_year>')
 def average_month(pick_year):
     year = datetime.datetime(int(pick_year), 1, 1).year
 
-    base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/deal/"
-    params = "?_limit=50&_embed=company"
-    url = base_url + params
-    response_deals = get_api_data(headers=headers, url=url)
-
-    if len(response_deals) > 0:
-        data = filter_deals(response_deals)
+    data = get_deal_data(headers)
+    deals = filter_deals(data)
+    years = get_years(data)
+    if len(deals) > 0:
         average_per_month = get_average_per_month(
-            data, year)
-        graph_labels = get_graph_labels(average_per_month)
-        graph_data = get_graph_data(average_per_month)
-        graph_colors = get_graph_colors(len(graph_labels))
-        return render_template('average_month.html', deals=average_per_month, display_year=year, labels=graph_labels, data=graph_data, backgroundColor=graph_colors[0], borderColor=graph_colors[1])
+            deals, year)
+        avg_per_month_chart = create_chart(
+            average_per_month, "bar", "name", "total_deals")
+        return render_template('average_month.html', deals=average_per_month, display_year=year, chart=avg_per_month_chart, years=years)
     else:
         msg = 'No deals found'
         return render_template('average_month.html', msg=msg)
 
 
-def get_customer_value(data, year):
-    collected_data = collections.defaultdict(list)
-    return_data = []
-    for deal in data:
-        customer = deal.get("Customer")
-        if customer is not None:
-            deal_year = deal.get("closing_date").year
-            status = deal.get("status")
-            if deal_year == year and status == "agreement":
-                value = deal.get("value")
-                collected_data[customer].append(value)
-    for cust in collected_data:
-        total = 0
-        count = 0
-        for value in collected_data[cust]:
-            total += value
-            count += 1
-        collected_data[cust] = total
-        return_data.append(
-            {"label": cust, "data": collected_data[cust], "Customer": cust, "Value": collected_data[cust], "total_deals": count})
-
-    return sorted(return_data, key=operator.itemgetter("Value"), reverse=True)
+@ app.route('/customer_value')
+def customer_value_default():
+    year = str(subtract_years(
+        datetime.datetime.now(datetime.timezone.utc), 1).year)
+    return customer_value(year)
 
 
 @ app.route('/customer_value/<pick_year>')
 def customer_value(pick_year):
+
     year = datetime.datetime(int(pick_year), 1, 1).year
-
-    base_url = "https://api-test.lime-crm.com/api-test/api/v1/limeobject/deal/"
-    params = "?_limit=50&_embed=company"
-    url = base_url + params
-    response_deals = get_api_data(headers=headers, url=url)
-
-    if len(response_deals) > 0:
-        data = filter_deals(response_deals)
-        customers = get_customer_value(
-            data, year)
-        graph_labels = get_graph_labels(customers)
-        graph_data = get_graph_data(customers)
-        graph_colors = get_graph_colors(len(graph_labels))
-        return render_template('customer_value.html', customers=customers, display_year=year, labels=graph_labels, data=graph_data, backgroundColor=graph_colors[0], borderColor=graph_colors[1])
+    data = get_deal_data(headers)
+    deals = filter_deals(data)
+    years = get_years(data)
+    customer_value = get_customer_value(
+        deals, year)
+    if len(customer_value) > 0:
+        customer_value_chart = create_chart(
+            customer_value, "horizontalBar", "customer_name", "value")
+        return render_template('customer_value.html', customers=customer_value, display_year=year, chart=customer_value_chart, years=years)
     else:
-        msg = 'No deals found'
-        return render_template('average_month.html', msg=msg)
+        print("here")
+        msg = 'No customers found'
+        return render_template('customer_value.html', msg=msg, display_year=year, years=years)
 
 
 def filter_customer_data(data):
