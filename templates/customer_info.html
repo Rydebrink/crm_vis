@@ -20,8 +20,8 @@
 <p>
 <strong>Deal id: </strong>{{deal.id}} <br>
 <strong>Description: </strong>{{deal.description}} <br>
-<strong>Deal value: </strong>{{deal.value}} <br>
-<strong>Deal closed: </strong>{{deal.closing_date}} <br>
+<strong>Deal value: </strong>{{deal.value}} SEK<br>
+<strong>Deal closed: </strong>{{deal.closing_date.strftime("%Y/%m/%d")}} <br>
 <strong>With status: </strong>{{deal.status}} <br>
 </p>
 {% endfor %}

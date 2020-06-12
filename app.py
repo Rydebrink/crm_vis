@@ -434,7 +434,14 @@ def customer_status():
 
 def format_deals(deals):
     return_data = []
+    for deal in deals:
+        print(deal.value)
+        value = format_value(deal.value)
     return ""
+
+
+def format_value(number):
+    print("{:,.2f} SEK".format(number))
 
 
 @ app.route('/customer/<id>')
