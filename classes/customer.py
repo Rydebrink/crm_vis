@@ -9,3 +9,13 @@ class Customer:
         self.zip_code = zip_code
         self.city = city
         self.deals = deals
+
+    def get_customer_value(self):
+        total = 0
+        if self.deals is None:
+            return 0
+        for deal in self.deals:
+            if deal.status == "agreement":
+                total += deal.value
+
+        return total

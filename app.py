@@ -114,9 +114,13 @@ def filter_deals(data):
     return deals
 
 
-def filter_customers(data):
+def filter_customers(customer_data, filtered_deals):
+    customer_deals = collections.defaultdict(list)
+    for deal in filtered_deals:
+        if deal.customer is not None:
+            customer_deals[deal.customer.customer_id].append(deal)
     customers = []
-    for entry in data:
+    for entry in customer_data:
         customer_id = entry.get("_id")
         name = entry.get("name")
         status = entry.get("buyingstatus").get("key")
@@ -125,9 +129,10 @@ def filter_customers(data):
         address = entry.get("postaladdress1")
         zip_code = entry.get("postalzipcode")
         city = entry.get("postalcity")
-        deals = filter_deals(get_deals_for_customer(headers, customer_id))
+        deals = customer_deals.get(customer_id)
         customers.append(Customer(customer_id, name, status,
                                   www, phone, address, zip_code, city, deals))
+    print("CUSTOMERS", customers)
     return customers
 
 
@@ -358,40 +363,12 @@ def subtract_years(dt, years):
     return dt
 
 
-def set_customer_status(data):
-    status = max(data)
-
-    if status == STATUS_CUSTOMER:
-        return "Customer"
-    elif status == STATUS_INACTIVE:
-        return "Inactive"
-    elif status == STATUS_IRRELEVANT:
-        return "Irrelevant"
-    elif status == STATUS_PROSPECT:
-        return "Prospect"
-    else:
-        return "Unknown status"
-
-
-def get_customer_status(customers):
-    collected_data = collections.defaultdict(list)
-    customer_deals = collections.defaultdict(
-        lambda: collections.defaultdict(list))
-    return_data = []
-    last_year = subtract_years(datetime.datetime.now(datetime.timezone.utc), 1)
-    for data in deals:
-        cust_id = data.get("Customer-id")
-        if cust_id is not None:
-            cust_name = data.get("Customer")
-            deal_status = data.get("status")
-            deal_date = data.get("closing_date")
-            deal_value = data.get("value")
-            customer_deals[cust_id]["value"].append(deal_value)
-            customer_deals[cust_id]["date"].append(deal_date)
-            customer_deals[cust_id]["customer_name"].append(cust_name)
-            customer_status = data.get("company_status")
-            if deal_status == "agreement":
-                if deal_date > last_year:
+def set_customer_status(customer, year):
+    try:
+        data = []
+        for deal in customer.deals:
+            if deal.status == "agreement":
+                if deal.closing_date.year == year:
                     deal_status_value = STATUS_CUSTOMER
                 else:
                     deal_status_value = STATUS_INACTIVE
@@ -399,16 +376,42 @@ def get_customer_status(customers):
                 deal_status_value = STATUS_IRRELEVANT
             else:
                 deal_status_value = STATUS_PROSPECT
-            collected_data[cust_id].append(deal_status_value)
+            data.append(deal_status_value)
 
-    for company in collected_data:
-        total_value = sum(customer_deals[company]["value"])
-        latest_deal = sorted(customer_deals[company]["date"], reverse=True)[0]
-        status = set_customer_status(collected_data[company])
-        name = customer_deals[company]["customer_name"][0]
+        status = max(data)
+        if status == STATUS_CUSTOMER:
+            return "Customer"
+        elif status == STATUS_INACTIVE:
+            return "Inactive"
+        elif status == STATUS_IRRELEVANT:
+            return "Irrelevant"
+        elif status == STATUS_PROSPECT:
+            return "Prospect"
+        else:
+            return "Unknown status"
+    except TypeError:
+        print("ID", customer.customer_id, customer.name, customer.status)
+        return "Irrelevant" if customer.status == "irrelevant" else "Prospect"
+
+
+def get_customer_status(customers):
+    return_data = []
+    last_year = subtract_years(
+        datetime.datetime.now(datetime.timezone.utc), 1).year
+    for customer in customers:
+        status = set_customer_status(customer, last_year)
+        total_value = customer.get_customer_value()
+        try:
+            latest_deal = sorted(customer.deals, key=operator.attrgetter(
+                "closing_date"), reverse=True)[0].closing_date.strftime("%Y/%m/%d")
+        except TypeError:
+            latest_deal = "N/A"
+        except AttributeError:
+            latest_deal = "N/A"
         return_data.append(
-            {"id": company, "customer_name": name, "customer_status": status, "total_value": total_value, "latest_deal": latest_deal.strftime("%Y/%m/%d")})
-
+            {"id": customer.customer_id, "customer_name": customer.name, "customer_status": status, "total_value": total_value, "latest_deal": latest_deal})
+    return_data.append(
+        {"id": customer.customer_id, "customer_name": customer.name, "customer_status": "Irrelevant", "total_value": total_value, "latest_deal": latest_deal})
     return return_data
 
 
@@ -419,11 +422,10 @@ def customer_status():
 
     customer_data = get_customer_data(headers)
     deal_data = get_deal_data(headers)
-    deals = filter_deals(deal_data)
+    customers = filter_customers(customer_data, filter_deals(deal_data))
 
-    if len(customer_data) > 0:
-        customers_status = get_customer_status(
-            customer_data, deals)
+    if len(customers) > 0:
+        customers_status = get_customer_status(customers)
         return render_template('customer_status.html', customers=customers_status)
     else:
         msg = 'No deals found'

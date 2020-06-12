@@ -2,7 +2,7 @@
 <h2>Pick year</h2>
 <br />{% for year in years %}
 <a href="/customer_value/{{year}}"><button>{{year}}</button></a>
-{% endfor %} {% if chart%}
+{% endfor %} {% if chart %}
 <h3>Customers ordered by total order value for {{display_year}}</h3>
 <canvas id="myChart" width="400" height="200"></canvas>
 <script>
