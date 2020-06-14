@@ -53,7 +53,6 @@ def get_api_data(headers, url):
     nextpage = json_data.get("_links").get("next")
     while nextpage is not None:
         url = nextpage["href"]
-        print("hello")
         response = api_request.get(
             url=url, headers=headers, data=None, verify=False)
         json_data = json.loads(response.text)
@@ -200,8 +199,29 @@ def create_chart(data, title, label, chart_type, label_key, data_key):
     chart_labels = get_graph_labels(data, label_key)
     chart_data = get_graph_data(data, data_key)
     graph_colors = get_graph_colors(len(chart_labels))
-    print(data, title, label, chart_type, label_key, data_key, graph_colors)
     return Chart(title, label, chart_type, chart_labels, chart_data, graph_colors[0], graph_colors[1])
+
+
+def format_deals(deals):
+    return_data = []
+    for deal in deals:
+        deal.value = format_value(deal.value)
+        deal.status = deal.status.capitalize()
+        deal.closing_date = deal.closing_date.strftime("%Y-%m-%d")
+        return_data.append(deal)
+    return return_data
+
+
+def format_value(number):
+    return("{:,.2f} SEK".format(number))
+
+
+def subtract_years(dt, years):
+    try:
+        dt = dt.replace(year=dt.year-years)
+    except ValueError:
+        dt = dt.replace(year=dt.year-years, day=dt.day-1)
+    return dt
 
 
 def get_average_per_year(data):
@@ -269,6 +289,60 @@ def get_customer_value(deals, year):
     return sorted(return_data, key=operator.itemgetter("value"), reverse=True)
 
 
+def set_customer_status(customer, year):
+    try:
+        data = []
+        for deal in customer.deals:
+            if deal.status == "agreement":
+                if deal.closing_date > year or deal.closing_date.year == year.year:
+                    # if deal.closing_date.year == year:
+                    deal_status_value = STATUS_CUSTOMER
+                else:
+                    deal_status_value = STATUS_INACTIVE
+            elif customer_status == "irrelevant":
+                deal_status_value = STATUS_IRRELEVANT
+            else:
+                deal_status_value = STATUS_PROSPECT
+            data.append(deal_status_value)
+
+        status = max(data)
+        if status == STATUS_CUSTOMER:
+            return "Customer"
+        elif status == STATUS_INACTIVE:
+            return "Inactive"
+        elif status == STATUS_IRRELEVANT:
+            return "Irrelevant"
+        elif status == STATUS_PROSPECT:
+            return "Prospect"
+        else:
+            return "Unknown status"
+    except TypeError:
+        return "Irrelevant" if customer.status == "irrelevant" else "Prospect"
+
+
+def get_customer_status(customers):
+    return_data = []
+    # last_year = subtract_years(
+    #     datetime.datetime.now(datetime.timezone.utc), 1).year
+    last_year = subtract_years(
+        datetime.datetime.now(datetime.timezone.utc), 1)
+    for customer in customers:
+        status = set_customer_status(customer, last_year)
+        total_value = customer.get_customer_value()
+        try:
+            latest_deal = sorted(customer.deals, key=operator.attrgetter(
+                "closing_date"), reverse=True)[0].closing_date.strftime("%Y-%m-%d")
+        except TypeError:
+            latest_deal = "N/A"
+        except AttributeError:
+            latest_deal = "N/A"
+        return_data.append(
+            {"id": customer.customer_id, "customer_name": customer.name, "customer_status": status, "total_value": format_value(total_value), "latest_deal": latest_deal})
+    return_data.append(
+        {"id": customer.customer_id, "customer_name": customer.name, "customer_status": "Irrelevant", "total_value": format_value(total_value), "latest_deal": latest_deal})
+    return return_data
+
+
 @ app.route('/')
 def index():
     year = (subtract_years(
@@ -280,7 +354,6 @@ def index():
         deals, year)
     customer_value = get_customer_value(
         deals, year)
-    print("NOW", customer_value)
     if len(deals) > 0:
         charts = [
             create_chart(
@@ -326,7 +399,6 @@ def average_year():
             create_chart(
                 average_per_year, "Total deals won per year", "Total deals won", "bar", "year", "total_deals")
         ]
-        print(charts)
         return render_template('average_year.html', charts=charts)
     else:
         msg = 'No deals found'
@@ -391,68 +463,6 @@ def customer_value(pick_year):
         return render_template('customer_value.html', error=msg,  years=years)
 
 
-def subtract_years(dt, years):
-    try:
-        dt = dt.replace(year=dt.year-years)
-    except ValueError:
-        dt = dt.replace(year=dt.year-years, day=dt.day-1)
-    return dt
-
-
-def set_customer_status(customer, year):
-    try:
-        data = []
-        for deal in customer.deals:
-            if deal.status == "agreement":
-                if deal.closing_date > year or deal.closing_date.year == year.year:
-                    # if deal.closing_date.year == year:
-                    deal_status_value = STATUS_CUSTOMER
-                else:
-                    deal_status_value = STATUS_INACTIVE
-            elif customer_status == "irrelevant":
-                deal_status_value = STATUS_IRRELEVANT
-            else:
-                deal_status_value = STATUS_PROSPECT
-            data.append(deal_status_value)
-
-        status = max(data)
-        if status == STATUS_CUSTOMER:
-            return "Customer"
-        elif status == STATUS_INACTIVE:
-            return "Inactive"
-        elif status == STATUS_IRRELEVANT:
-            return "Irrelevant"
-        elif status == STATUS_PROSPECT:
-            return "Prospect"
-        else:
-            return "Unknown status"
-    except TypeError:
-        return "Irrelevant" if customer.status == "irrelevant" else "Prospect"
-
-
-def get_customer_status(customers):
-    return_data = []
-    # last_year = subtract_years(
-    #     datetime.datetime.now(datetime.timezone.utc), 1).year
-    last_year = subtract_years(
-        datetime.datetime.now(datetime.timezone.utc), 1)
-    for customer in customers:
-        status = set_customer_status(customer, last_year)
-        total_value = customer.get_customer_value()
-        try:
-            latest_deal = sorted(customer.deals, key=operator.attrgetter(
-                "closing_date"), reverse=True)[0].closing_date.strftime("%Y-%m-%d")
-        except TypeError:
-            latest_deal = "N/A"
-        except AttributeError:
-            latest_deal = "N/A"
-        return_data.append(
-            {"id": customer.customer_id, "customer_name": customer.name, "customer_status": status, "total_value": format_value(total_value), "latest_deal": latest_deal})
-    return_data.append(
-        {"id": customer.customer_id, "customer_name": customer.name, "customer_status": "Irrelevant", "total_value": format_value(total_value), "latest_deal": latest_deal})
-    return return_data
-
-
 @ app.route('/customer_status')
 def customer_status():
     year = str(subtract_years(
@@ -467,20 +477,6 @@ def customer_status():
     else:
         msg = 'No customers found'
         return render_template('customer_status.html', error=msg)
-
-
-def format_deals(deals):
-    return_data = []
-    for deal in deals:
-        deal.value = format_value(deal.value)
-        deal.status = deal.status.capitalize()
-        deal.closing_date = deal.closing_date.strftime("%Y-%m-%d")
-        return_data.append(deal)
-    return return_data
-
-
-def format_value(number):
-    return("{:,.2f} SEK".format(number))
 
 
 @ app.route('/customer/<id>')
@@ -507,17 +503,6 @@ def customer_info(id):
     else:
         msg = 'No deals found'
         return render_template('customer_info.html', msg=msg)
-
-# You can add more pages to your app, like this:
-#
-# @app.route('/myroute')
-# def myroute():
-# 	mydata = [{'name': 'apple'}, {'name': 'mango'}, {'name': 'banana'}]
-# 	return render_template('mytemplate.html', items=mydata)
-#
-# You also have to create the mytemplate.html page inside the 'templates'-folder to be rendered
-# And then add a link to your page in the _navbar.html-file, located in templates/includes/
-
 
 # DEBUGGING
 # If you want to debug your app, one of the ways you can do that is to use:
