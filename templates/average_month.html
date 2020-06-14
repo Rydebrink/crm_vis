@@ -1,60 +1,10 @@
 {% extends 'layout.html' %} {% block body %}
-<h1>Number of won deals per month for {{display_year}}</h1>
 <h2>Pick year</h2>
 <br />
 {% for year in years %}
-<a href="/average_month/{{year}}"><button>{{year}}</button></a>
+<a href="/average_month/{{year}}"><button class="btn">{{year}}</button></a>
 {% endfor %}
 <br />
-<!-- <h3>Raw data example</h3>
-{{deals[0]}} <br />
-<h3>Formatted data</h3>
-{% for deal in deals %}
-<p>{{deal.name, deal.total_deals}}</p>
-{% endfor %}
-
-<br /> -->
-
-<canvas id="myChart" width="400" height="200"></canvas>
-<script>
-  var ctx = document.getElementById("myChart");
-  var myChart = new Chart(ctx, {
-    type: "{{chart.chart_type}}",
-    data: {
-      labels: {{chart.labels|safe}},
-      datasets: [
-        {
-          label: "Deals closed per month",
-          minBarLength: 5,
-          data: {{chart.data}},
-          backgroundColor: {{chart.background_color|safe}},
-          borderColor: {{chart.border_color|safe}},
-          borderWidth: 1.5,
-        },
-      ],
-    },
-    options: {
-      scales: {
-        yAxes: [
-          {
-            offset: true,
-            ticks: {
-              beginAtZero: true,
-            },
-          },
-        ],
-        xAxes: [
-          {
-            offset: true
-          }
-        ],
-      },
-      legend: { display: false },
-      title: {
-        display: true,
-        text: 'Deals closed per month for ' + {{display_year}}
-      },
-    },
-  });
-</script>
-{% endblock %}
+{% for chart in charts %}
+<h2 style="text-align: center; color: #666666;">{{chart.title}}</h2>
+{% include 'includes/_charts.html' %} {% endfor %} {% endblock %}

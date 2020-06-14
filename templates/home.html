@@ -1,8 +1,19 @@
-{% extends 'layout.html' %} {% block body %}
-<div class="jumbotron text-center">
-  <h1>Dream team sales screen</h1>
-  <p class="lead">
-    Pick a category to display some sales data
-  </p>
+<div class="home-page">
+  {% extends 'layout.html' %} {% block body %}
+  <div class="intro">
+    <h1>Dream team sales screen</h1>
+    <p>
+      Scroll down to see somme sales data for {{year}} <br />
+      Or pick a category in the bar above to filter on different years
+    </p>
+  </div>
 </div>
+<section class="all-charts">
+  {% for chart in charts %}
+  <div class="half-chart">
+    <h2 style="text-align: center; color: #666666;">{{chart.title}}</h2>
+    {% include 'includes/_charts.html' %}
+  </div>
+  {% endfor %}
+</section>
 {% endblock %}

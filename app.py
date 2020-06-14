@@ -21,6 +21,14 @@ STATUS_INACTIVE = 2
 STATUS_PROSPECT = 1
 STATUS_IRRELEVANT = 0
 
+AVERAGE_YEAR_TITLE = "Average deal value per year in SEK"
+AVERAGE_YEAR_LABEL = "Average deal value in SEK"
+
+AVERAGE_MONTH_TITLE = "Deals closed per month for "
+AVERAGE_MONTH_LABEL = "Total number of orders won"
+
+CUSTOMER_VALUE_TITLE = "Total value of orders won per customer for "
+CUSTOMER_VALUE_LABEL = "Total value "
 
 app = Flask(__name__, static_url_path='/static')
 
@@ -43,14 +51,14 @@ def get_api_data(headers, url):
 
     # Check for more data pages and get thoose too
     nextpage = json_data.get("_links").get("next")
-    # while nextpage is not None:
-    #     url = nextpage["href"]
-    #     print("hello")
-    #     response = api_request.get(
-    #         url=url, headers=headers, data=None, verify=False)
-    #     json_data = json.loads(response.text)
-    #     limeobjects += json_data.get("_embedded").get("limeobjects")
-    #     nextpage = json_data.get("_links").get("next")
+    while nextpage is not None:
+        url = nextpage["href"]
+        print("hello")
+        response = api_request.get(
+            url=url, headers=headers, data=None, verify=False)
+        json_data = json.loads(response.text)
+        limeobjects += json_data.get("_embedded").get("limeobjects")
+        nextpage = json_data.get("_links").get("next")
 
     return limeobjects
 
@@ -89,9 +97,10 @@ def filter_deal(entry, close_date):
         address = company.get("postaladdress1")
         zip_code = company.get("postalzipcode")
         city = company.get("postalcity")
+        country = company.get("country")
         deals = []
         customer = Customer(customer_id, name, status, www,
-                            phone, address, zip_code, city, deals)
+                            phone, address, zip_code, city, country, deals)
     else:
         customer = None
     return Deal(entry.get("_id"),
@@ -104,6 +113,8 @@ def filter_deal(entry, close_date):
 
 def filter_deals(data):
     deals = []
+    # import pdb
+    # pdb.set_trace()
     for entry in data:
         try:
             parse(entry.get("closeddate"))
@@ -122,17 +133,19 @@ def filter_customers(customer_data, filtered_deals):
     customers = []
     for entry in customer_data:
         customer_id = entry.get("_id")
-        name = entry.get("name")
+        name = entry.get("name") if entry.get("name") else "N/A"
         status = entry.get("buyingstatus").get("key")
-        www = entry.get("www")
-        phone = entry.get("phone")
-        address = entry.get("postaladdress1")
-        zip_code = entry.get("postalzipcode")
-        city = entry.get("postalcity")
+        www = entry.get("www") if entry.get("www") else "N/A"
+        phone = entry.get("phone") if entry.get("phone") else "N/A"
+        address = entry.get("postaladdress1") if entry.get(
+            "postaladdress1") else "N/A"
+        zip_code = entry.get("postalzipcode") if entry.get(
+            "postalzipcode") else "N/A"
+        city = entry.get("postalcity") if entry.get("postalcity") else "N/A"
+        country = entry.get("country") if entry.get("country") else "N/A"
         deals = customer_deals.get(customer_id)
         customers.append(Customer(customer_id, name, status,
-                                  www, phone, address, zip_code, city, deals))
-    print("CUSTOMERS", customers)
+                                  www, phone, address, zip_code, city, country, deals))
     return customers
 
 
@@ -183,12 +196,12 @@ def get_graph_colors(colors):
     return [background_color, border_color]
 
 
-def create_chart(data, chart_type, label_key, data_key):
+def create_chart(data, title, label, chart_type, label_key, data_key):
     chart_labels = get_graph_labels(data, label_key)
     chart_data = get_graph_data(data, data_key)
     graph_colors = get_graph_colors(len(chart_labels))
-    print(graph_colors)
-    return Chart(chart_type, chart_labels, chart_data, graph_colors[0], graph_colors[1])
+    print(data, title, label, chart_type, label_key, data_key, graph_colors)
+    return Chart(title, label, chart_type, chart_labels, chart_data, graph_colors[0], graph_colors[1])
 
 
 def get_average_per_year(data):
@@ -198,7 +211,6 @@ def get_average_per_year(data):
         year = deal.closing_date.year if deal.closing_date is not None else None
         status = deal.status
         if status == "agreement" and year is not None:
-            print("YEAR AGAIN ", year)
             value = deal.value
             collected_data[year].append(value)
     for year in collected_data:
@@ -210,8 +222,7 @@ def get_average_per_year(data):
         collected_data[year] = round((total / count))
         return_data.append(
             {"year": year, "avg_value": collected_data[year], "total_deals": count})
-    print(return_data)
-    return return_data
+    return sorted(return_data, key=operator.itemgetter("year"))
 
 
 def get_average_per_month(data, year):
@@ -260,7 +271,34 @@ def get_customer_value(deals, year):
 
 @ app.route('/')
 def index():
-    return render_template('home.html')
+    year = (subtract_years(
+        datetime.datetime.now(datetime.timezone.utc), 1).year)
+    data = get_deal_data(headers)
+    deals = filter_deals(data)
+    average_per_year = get_average_per_year(deals)
+    average_per_month = get_average_per_month(
+        deals, year)
+    customer_value = get_customer_value(
+        deals, year)
+    print("NOW", customer_value)
+    if len(deals) > 0:
+        charts = [
+            create_chart(
+                average_per_year, AVERAGE_YEAR_TITLE, AVERAGE_YEAR_LABEL, "bar", "year", "avg_value"),
+            create_chart(
+                average_per_year, AVERAGE_YEAR_TITLE, AVERAGE_YEAR_LABEL, "pie", "year", "avg_value"),
+
+            create_chart(
+                average_per_month, AVERAGE_MONTH_TITLE + str(year), AVERAGE_MONTH_LABEL, "bar", "name", "total_deals"),
+            create_chart(
+                average_per_month, AVERAGE_MONTH_TITLE + str(year), AVERAGE_MONTH_LABEL, "pie", "name", "total_deals"),
+
+            create_chart(
+                customer_value, CUSTOMER_VALUE_TITLE + str(year), CUSTOMER_VALUE_LABEL, "horizontalBar", "customer_name", "value"),
+            create_chart(
+                customer_value, CUSTOMER_VALUE_TITLE + str(year), CUSTOMER_VALUE_LABEL, "pie", "customer_name", "value")
+        ]
+        return render_template('home.html', charts=charts, year=str(year))
 
 
 @ app.route('/example')
@@ -282,11 +320,14 @@ def average_year():
     deals = filter_deals(data)
     if len(deals) > 0:
         average_per_year = get_average_per_year(deals)
-        avg_per_year_chart = create_chart(
-            average_per_year, "bar", "year", "avg_value")
-        total_deals_per_year_chart = create_chart(
-            average_per_year, "bar", "year", "total_deals")
-        return render_template('average_year.html', deals=average_per_year, avg_chart=avg_per_year_chart, total_chart=total_deals_per_year_chart)
+        charts = [
+            create_chart(
+                average_per_year, AVERAGE_YEAR_TITLE, AVERAGE_YEAR_LABEL, "bar", "year", "avg_value"),
+            create_chart(
+                average_per_year, "Total deals won per year", "Total deals won", "bar", "year", "total_deals")
+        ]
+        print(charts)
+        return render_template('average_year.html', charts=charts)
     else:
         msg = 'No deals found'
         return render_template('average_year.html', msg=msg)
@@ -309,9 +350,15 @@ def average_month(pick_year):
     if len(deals) > 0:
         average_per_month = get_average_per_month(
             deals, year)
-        avg_per_month_chart = create_chart(
-            average_per_month, "bar", "name", "total_deals")
-        return render_template('average_month.html', deals=average_per_month, display_year=year, chart=avg_per_month_chart, years=years)
+        charts = [
+            # create_chart(
+            #     average_per_month, AVERAGE_MONTH_TITLE + str(year), AVERAGE_MONTH_LABEL, "line", "name", "total_deals"),
+            # create_chart(
+            #     average_per_month, AVERAGE_MONTH_TITLE + str(year), AVERAGE_MONTH_LABEL, "pie", "name", "total_deals"),
+            create_chart(
+                average_per_month, AVERAGE_MONTH_TITLE + str(year), AVERAGE_MONTH_LABEL, "bar", "name", "total_deals")
+        ]
+        return render_template('average_month.html', deals=average_per_month, display_year=year, charts=charts, years=years)
     else:
         msg = 'No deals found'
         return render_template('average_month.html', msg=msg)
@@ -334,25 +381,14 @@ def customer_value(pick_year):
     customer_value = get_customer_value(
         deals, year)
     if len(customer_value) > 0:
-        customer_value_chart = create_chart(
-            customer_value, "horizontalBar", "customer_name", "value")
-        return render_template('customer_value.html', customers=customer_value, display_year=year, chart=customer_value_chart, years=years)
+        charts = [
+            create_chart(
+                customer_value, CUSTOMER_VALUE_TITLE + str(year), CUSTOMER_VALUE_LABEL, "horizontalBar", "customer_name", "value")
+        ]
+        return render_template('customer_value.html', charts=charts, years=years)
     else:
-        print("here")
         msg = 'No customers found'
-        return render_template('customer_value.html', msg=msg, display_year=year, years=years)
-
-
-def filter_customer_data(data):
-    return {
-        "name": data.get("name") if data.get("name") else "N/A",
-        "phone": data.get("phone") if data.get("phone") else "N/A",
-        "www": data.get("www") if data.get("www") else "N/A",
-        "postaladdress1": data.get("postaladdress1") if data.get("postaladdress1") else "N/A",
-        "postalzipcode": data.get("postalzipcode") if data.get("postalzipcode") else "N/A",
-        "postalcity": data.get("postalcity") if data.get("postalcity") else "N/A",
-        "country": data.get("country") if data.get("country") else "N/A",
-    }
+        return render_template('customer_value.html', error=msg,  years=years)
 
 
 def subtract_years(dt, years):
@@ -368,7 +404,8 @@ def set_customer_status(customer, year):
         data = []
         for deal in customer.deals:
             if deal.status == "agreement":
-                if deal.closing_date.year == year:
+                if deal.closing_date > year or deal.closing_date.year == year.year:
+                    # if deal.closing_date.year == year:
                     deal_status_value = STATUS_CUSTOMER
                 else:
                     deal_status_value = STATUS_INACTIVE
@@ -390,28 +427,29 @@ def set_customer_status(customer, year):
         else:
             return "Unknown status"
     except TypeError:
-        print("ID", customer.customer_id, customer.name, customer.status)
         return "Irrelevant" if customer.status == "irrelevant" else "Prospect"
 
 
 def get_customer_status(customers):
     return_data = []
+    # last_year = subtract_years(
+    #     datetime.datetime.now(datetime.timezone.utc), 1).year
     last_year = subtract_years(
-        datetime.datetime.now(datetime.timezone.utc), 1).year
+        datetime.datetime.now(datetime.timezone.utc), 1)
     for customer in customers:
         status = set_customer_status(customer, last_year)
         total_value = customer.get_customer_value()
         try:
             latest_deal = sorted(customer.deals, key=operator.attrgetter(
-                "closing_date"), reverse=True)[0].closing_date.strftime("%Y/%m/%d")
+                "closing_date"), reverse=True)[0].closing_date.strftime("%Y-%m-%d")
         except TypeError:
             latest_deal = "N/A"
         except AttributeError:
             latest_deal = "N/A"
         return_data.append(
-            {"id": customer.customer_id, "customer_name": customer.name, "customer_status": status, "total_value": total_value, "latest_deal": latest_deal})
+            {"id": customer.customer_id, "customer_name": customer.name, "customer_status": status, "total_value": format_value(total_value), "latest_deal": latest_deal})
     return_data.append(
-        {"id": customer.customer_id, "customer_name": customer.name, "customer_status": "Irrelevant", "total_value": total_value, "latest_deal": latest_deal})
+        {"id": customer.customer_id, "customer_name": customer.name, "customer_status": "Irrelevant", "total_value": format_value(total_value), "latest_deal": latest_deal})
     return return_data
 
 
@@ -423,25 +461,26 @@ def customer_status():
     customer_data = get_customer_data(headers)
     deal_data = get_deal_data(headers)
     customers = filter_customers(customer_data, filter_deals(deal_data))
-
     if len(customers) > 0:
         customers_status = get_customer_status(customers)
         return render_template('customer_status.html', customers=customers_status)
     else:
-        msg = 'No deals found'
-        return render_template('customer_status.html', msg=msg)
+        msg = 'No customers found'
+        return render_template('customer_status.html', error=msg)
 
 
 def format_deals(deals):
     return_data = []
     for deal in deals:
-        print(deal.value)
-        value = format_value(deal.value)
-    return ""
+        deal.value = format_value(deal.value)
+        deal.status = deal.status.capitalize()
+        deal.closing_date = deal.closing_date.strftime("%Y-%m-%d")
+        return_data.append(deal)
+    return return_data
 
 
 def format_value(number):
-    print("{:,.2f} SEK".format(number))
+    return("{:,.2f} SEK".format(number))
 
 
 @ app.route('/customer/<id>')
@@ -452,16 +491,19 @@ def customer_info(id):
     response = api_request.get(
         url=url, headers=headers, data=None, verify=False)
 
-    response_customer = json.loads(response.text)
+    response_customer = [json.loads(response.text)]
 
     url += "deal/"
     response_deals = get_api_data(headers=headers, url=url)
 
     if len(response_customer) > 0:
-        customer_info = filter_customer_data(response_customer)
         deal_info = filter_deals(response_deals)
+        customer_info = filter_customers(response_customer, deal_info)
+        customer = customer_info[0]
+        customer.deals = deal_info
+        total = customer.get_customer_value()
         deals_formatted = format_deals(deal_info)
-        return render_template('customer_info.html', customer=customer_info, deals=deal_info, total_value=10, total_orders=len(deal_info))
+        return render_template('customer_info.html', customer=customer, deals=deals_formatted, total_value=format_value(total), total_orders=len(deal_info))
     else:
         msg = 'No deals found'
         return render_template('customer_info.html', msg=msg)

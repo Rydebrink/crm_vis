@@ -1,49 +1,7 @@
 {% extends 'layout.html' %} {% block body %}
 <h2>Pick year</h2>
 <br />{% for year in years %}
-<a href="/customer_value/{{year}}"><button>{{year}}</button></a>
-{% endfor %} {% if chart %}
-<h3>Customers ordered by total order value for {{display_year}}</h3>
-<canvas id="myChart" width="400" height="200"></canvas>
-<script>
-  var ctx = document.getElementById("myChart");
-  var myChart = new Chart(ctx, {
-    type: "{{chart.chart_type}}",
-    data: {
-      labels: {{chart.labels|safe}},
-      datasets: [
-        {
-          label: "Total value of orders won",
-          minBarLength: 5,
-          data: {{chart.data}},
-          backgroundColor: {{chart.background_color|safe}},
-          borderColor: {{chart.border_color|safe}},
-          borderWidth: 1.5,
-        },
-      ],
-    },
-    options: {
-      scales: {
-        yAxes: [
-          {
-            offset: true,
-            ticks: {
-              beginAtZero: true,
-            },
-          },
-        ],
-        xAxes: [
-          {
-            offset: true
-          }
-        ],
-      },
-      legend: { display: false },
-      title: {
-        display: true,
-        text: 'Total value of order won per customer for ' + {{display_year}}
-      },
-    },
-  });
-</script>
-{% endif %} {% endblock %}
+<a href="/customer_value/{{year}}"><button class="btn">{{year}}</button></a>
+{% endfor %} {% for chart in charts %}
+<h2 style="text-align: center; color: #666666;">{{chart.title}}</h2>
+{% include 'includes/_charts.html' %} {% endfor %}{% endblock %}
