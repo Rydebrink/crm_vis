@@ -1,67 +1,7 @@
 {% extends 'layout.html' %} {% block body %}
-<h1>Total value per customer for {{display_year}}</h1>
 <h2>Pick year</h2>
-<br />
-<a href="/customer_value/2016"><button>2016</button></a>
-<a href="/customer_value/2017"><button>2017</button></a>
-<a href="/customer_value/2018"><button>2018</button></a>
-<a href="/customer_value/2019"><button>2019</button></a>
-<a href="/customer_value/2020"><button>2020</button></a>
-<h3>Customers ordered by total order value for {{display_year}}</h3>
-<!-- <h3>Raw data example</h3>
-{{customers[0]}} <br />
-<h3>Formatted data</h3>
-{% for customer in customers %}
-<p>{{ customer }}</p>
-<p>
-  <strong>Customer:</strong> {{customer.Customer}} <br />
-  <strong> Total order value: </strong> {{customer.Value}} <br />
-  <strong>Number or orders: </strong> {{customer.total_deals}}
-</p>
-{% endfor %}
-
-<br /> -->
-
-<canvas id="myChart" width="400" height="200"></canvas>
-<script>
-  var ctx = document.getElementById("myChart");
-  var myChart = new Chart(ctx, {
-    type: "horizontalBar",
-    data: {
-      labels: {{labels|safe}},
-      datasets: [
-        {
-          label: "Deals closed per month",
-          minBarLength: 5,
-          data: {{data}},
-          backgroundColor: {{backgroundColor|safe}},
-          borderColor: {{borderColor|safe}},
-          borderWidth: 1.5,
-        },
-      ],
-    },
-    options: {
-      scales: {
-        yAxes: [
-          {
-            offset: true,
-            ticks: {
-              beginAtZero: true,
-            },
-          },
-        ],
-        xAxes: [
-          {
-            // offset: true
-          }
-        ],
-      },
-      legend: { display: false },
-      title: {
-        display: true,
-        text: 'Total ordervalue per customer for ' + {{display_year}}
-      },
-    },
-  });
-</script>
-{% endblock %}
+<br />{% for year in years %}
+<a href="/customer_value/{{year}}"><button class="btn">{{year}}</button></a>
+{% endfor %} {% for chart in charts %}
+<h2 style="text-align: center; color: #666666;">{{chart.title}}</h2>
+{% include 'includes/_charts.html' %} {% endfor %}{% endblock %}

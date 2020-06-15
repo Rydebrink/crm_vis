@@ -1,13 +1,12 @@
 {% extends 'layout.html' %} {% block body %}
-<h1>Customer information</h1>
 <h2 class="title"><strong>Namn: {{customer.name}}</strong></h2>
 <p>
     <h3>Kontaktuppgifter</h3>
     <strong>WWW: </strong>{{customer.www}} <br>
     <strong>Telefon: </strong>{{customer.phone}}<br>
-    <strong>Adress: </strong>{{customer.postaladdress1}}<br>
-    <strong>Postnummer: </strong>{{customer.postalzipcode}}<br>
-    <strong>Stad: </strong>{{customer.postalcity}}<br>
+    <strong>Adress: </strong>{{customer.address}}<br>
+    <strong>Postnummer: </strong>{{customer.zip_code}}<br>
+    <strong>Stad: </strong>{{customer.city}}<br>
     <strong>Land: </strong>{{customer.country}}
 </p>
 <p>
@@ -20,7 +19,7 @@
 <p>
 <strong>Deal id: </strong>{{deal.id}} <br>
 <strong>Description: </strong>{{deal.description}} <br>
-<strong>Deal value: </strong>{{deal.value}} <br>
+<strong>Deal value: </strong>{{deal.value}} SEK<br>
 <strong>Deal closed: </strong>{{deal.closing_date}} <br>
 <strong>With status: </strong>{{deal.status}} <br>
 </p>

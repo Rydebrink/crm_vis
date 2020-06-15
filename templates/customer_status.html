@@ -1,9 +1,6 @@
 {% extends 'layout.html' %} {% block body %}
-<h1>Status of existing and potential customers</h1>
-<h3>Raw data example</h3>
-{{customers[0]}} <br />
-<h3>Formatted data</h3>
-<div class="customer-section">
+<h1 style="text-align: center; color: #666666;">Status of existing and potential customers</h1>
+  <div class="customer-section">
   {% for customer in customers %}
   <a href="/customer/{{customer.id}}">
   <div class="customer-card {{customer.customer_status}}">

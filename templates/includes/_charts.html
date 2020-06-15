@@ -1,0 +1,51 @@
+<canvas id="myChart{{charts.index(chart)}}" width="400" height="200"></canvas>
+<script>
+  var ctx = document.getElementById("myChart{{charts.index(chart)}}");
+  var myChart = new Chart(ctx, {
+    type: "{{chart.chart_type}}",
+    data: {
+      labels: {{chart.labels|safe}},
+      datasets: [
+        {
+          label: "{{chart.label}}",
+          minBarLength: 5,
+          data: {{chart.data}},
+          backgroundColor: {{chart.background_color|safe}},
+          borderColor: {{chart.border_color|safe}},
+          borderWidth: 1.5,
+        },
+      ],
+    },
+    options: {
+      scales: {
+        yAxes: [
+          {
+            display: {{chart.display}},
+            offset: true,
+            ticks: {
+              beginAtZero: true,
+            },
+          },
+        ],
+        xAxes: [
+          { display: {{chart.display}},
+            offset: true
+          }
+        ],
+      },
+      legend: {
+        display: {{chart.legend}},
+        position:'top',
+        labels: {
+          fontSize: 12
+        }
+      },
+      title: {
+        position: 'left',
+        fontSize: 24,
+        display: false,
+        text: "{{chart.title}}"
+      },
+    },
+  });
+</script>
